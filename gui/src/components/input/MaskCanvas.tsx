@@ -2,7 +2,7 @@ import { doesExist, Maybe, mustExist } from '@apextoaster/js-utils';
 import { Download, FormatColorFill, Gradient, InvertColors, Save, Undo } from '@mui/icons-material';
 import { Button, Stack, Typography } from '@mui/material';
 import { throttle } from 'lodash';
-import React, { RefObject, useContext, useEffect, useMemo, useRef } from 'react';
+import React, { RefObject, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 
 import { SAVE_TIME } from '../../config.js';
@@ -46,6 +46,8 @@ export function MaskCanvas(props: MaskCanvasProps) {
   const { params } = mustExist(useContext(ConfigContext));
   const logger = mustExist(useContext(LoggerContext));
 
+  const [ lastPoint, setLastPoint ] = useState<Point>({ x: 0, y: 0 });
+
   function composite() {
     if (doesExist(viewRef.current)) {
       const { ctx } = getClearContext(viewRef);
@@ -59,6 +61,14 @@ export function MaskCanvas(props: MaskCanvasProps) {
         ctx.drawImage(brushRef.current, 0, 0);
       }
     }
+  }
+
+  function distanceBetween(point1: Point, point2: Point) {
+    return Math.sqrt(Math.pow(point2.x - point1.x, 2) + Math.pow(point2.y - point1.y, 2));
+  }
+
+  function angleBetween(point1: Point, point2: Point) {
+    return Math.atan2(point2.x - point1.x, point2.y - point1.y);
   }
 
   function drawBrush(point: Point): void {
@@ -77,12 +87,19 @@ export function MaskCanvas(props: MaskCanvasProps) {
     if (clicks.length > 0) {
       logger.debug('drawing clicks', { count: clicks.length });
 
+      const distance = distanceBetween(lastPoint, clicks[0]);
+      const angle = angleBetween(lastPoint, clicks[0]);
+
       const { ctx } = getContext(maskRef);
       ctx.fillStyle = grayToRGB(brush.color, brush.strength);
 
-      for (const click of clicks) {
-        drawCircle(ctx, click, brush.size);
-      }
+      // for (const click of clicks) {
+        for(let i = 0; i < distance; i += brush.size) {
+          const x = lastPoint.x + (Math.sin(angle) * i) - brush.size / 2;
+          const y = lastPoint.y + (Math.cos(angle) * i) - brush.size / 2;
+          drawCircle(ctx, { x, y }, brush.size);
+        }
+      // }
 
       composite();
       dirty.current = true;
@@ -107,6 +124,8 @@ export function MaskCanvas(props: MaskCanvasProps) {
   function drawMouse(event: React.MouseEvent<HTMLCanvasElement>) {
     const canvas = mustExist(viewRef.current);
     const bounds = canvas.getBoundingClientRect();
+
+    setLastPoint({ x: event.clientX - bounds.left, y: event.clientY - bounds.top });
 
     if (painting.current) {
       drawClicks([{
