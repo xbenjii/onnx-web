@@ -2,7 +2,7 @@ import { doesExist, Maybe, mustExist } from '@apextoaster/js-utils';
 import { Download, FormatColorFill, Gradient, InvertColors, Save, Undo } from '@mui/icons-material';
 import { Button, Stack, Typography } from '@mui/material';
 import { throttle } from 'lodash';
-import React, { RefObject, useContext, useEffect, useMemo, useRef } from 'react';
+import React, { RefObject, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 
 import { SAVE_TIME } from '../../config.js';
@@ -45,6 +45,10 @@ export function MaskCanvas(props: MaskCanvasProps) {
   const { source, mask } = props;
   const { params } = mustExist(useContext(ConfigContext));
   const logger = mustExist(useContext(LoggerContext));
+
+  const [ maskPoints, setMaskPoints ] = useState<Array<Point>>([]);
+  const addMaskPoint = (point: Point) => setMaskPoints((points: Array<Point>) => [...points, point]);
+  const clearMaskPoints = () => setMaskPoints([]);
 
   function composite() {
     if (doesExist(viewRef.current)) {
@@ -89,6 +93,28 @@ export function MaskCanvas(props: MaskCanvasProps) {
     }
   }
 
+  function drawMaskPoints(points: Array<Point>): void {
+    if(points.length > 0) {
+      logger.debug('drawing points', { points, length: points.length });
+
+      const { ctx } = getContext(maskRef);
+
+      ctx.lineWidth = brush.size * 2;
+      ctx.lineJoin = ctx.lineCap = 'round';
+      ctx.strokeStyle = grayToRGB(brush.color, brush.strength);
+
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for(let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.stroke();
+
+      composite();
+      dirty.current = true;
+    }
+  }
+
   async function drawMask(file: Blob): Promise<void> {
     const image = await imageFromBlob(file);
     if (doesExist(maskRef.current)) {
@@ -109,10 +135,16 @@ export function MaskCanvas(props: MaskCanvasProps) {
     const bounds = canvas.getBoundingClientRect();
 
     if (painting.current) {
-      drawClicks([{
+
+      addMaskPoint({
         x: event.clientX - bounds.left,
         y: event.clientY - bounds.top,
-      }]);
+      });
+      drawMaskPoints(maskPoints);
+      // drawClicks([{
+      //   x: event.clientX - bounds.left,
+      //   y: event.clientY - bounds.top,
+      // }]);
     } else {
       drawBrush({
         x: event.clientX - bounds.left,
@@ -136,6 +168,7 @@ export function MaskCanvas(props: MaskCanvasProps) {
   function finishPainting() {
     logger.debug('finish painting');
     painting.current = false;
+    clearMaskPoints();
 
     if (doesExist(brushRef.current)) {
       getClearContext(brushRef);
