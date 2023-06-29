@@ -27,6 +27,7 @@ export function ImageControl(props: ImageControlProps) {
   const { params } = mustExist(useContext(ConfigContext));
   const state = mustExist(useContext(StateContext));
   const controlState = useStore(state, props.selector);
+  const [savePrompt, prompts] = useStore(state, (s) => [s.savePrompt, s.prompts]);
   const { t } = useTranslation();
 
   const client = mustExist(useContext(ClientContext));
@@ -223,6 +224,8 @@ export function ImageControl(props: ImageControlProps) {
           });
         }
       }}
+      savePrompt={savePrompt}
+      prompts={prompts}
     />
   </Stack>;
 }

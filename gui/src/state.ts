@@ -143,6 +143,13 @@ interface BlendSlice {
 interface ResetSlice {
   resetAll(): void;
 }
+
+interface PromptSlice {
+  prompts: Array<string>;
+
+  savePrompt(prompt: string): void;
+  removePrompt(prompt: string): void;
+}
 // #endregion
 
 /**
@@ -161,7 +168,8 @@ export type OnnxState
   & UpscaleSlice
   & BlendSlice
   & ResetSlice
-  & ExtraSlice;
+  & ExtraSlice
+  & PromptSlice;
 
 /**
  * Shorthand for state creator to reduce repeated arguments.
@@ -572,6 +580,35 @@ export function createStateSlices(server: ServerParams) {
     },
   });
 
+  const createPromptSlice: Slice<PromptSlice> = (set) => ({
+    prompts: [],
+    savePrompt(prompt) {
+      // set((prev) => ({
+      //   ...prev,
+      //   prompts: [...prev.prompts, prompt],
+      // }));
+      set((prev) => {
+        console.log(prev);
+        return {
+          ...prev,
+          prompts: [...prev.prompts, prompt],
+        };
+      });
+    },
+    removePrompt(prompt) {
+      set((prev) => {
+        const prompts = [...prev.prompts];
+        const index = prompts.findIndex((it) => it === prompt);
+        prompts.splice(index, 1);
+        return {
+          ...prev,
+          prompts,
+        };
+      });
+    },
+  });
+
+
   // eslint-disable-next-line sonarjs/cognitive-complexity
   const createExtraSlice: Slice<ExtraSlice> = (set) => ({
     extras: {
@@ -765,5 +802,6 @@ export function createStateSlices(server: ServerParams) {
     createBlendSlice,
     createResetSlice,
     createExtraSlice,
+    createPromptSlice,
   };
 }
