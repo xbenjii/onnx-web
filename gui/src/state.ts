@@ -583,10 +583,6 @@ export function createStateSlices(server: ServerParams) {
   const createPromptSlice: Slice<PromptSlice> = (set) => ({
     prompts: [],
     savePrompt(prompt) {
-      // set((prev) => ({
-      //   ...prev,
-      //   prompts: [...prev.prompts, prompt],
-      // }));
       set((prev) => {
         console.log(prev);
         return {
